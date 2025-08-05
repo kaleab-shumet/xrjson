@@ -1,6 +1,10 @@
-# xrjson(Xml Referring JSON)
+# xrjson (Xml Referring JSON)
 
 A TypeScript library for parsing JSON with external XML literal references, designed to solve JSON generation errors in Large Language Models by separating complex content from JSON structure.
+
+## What is XRJSON?
+
+An extended JSON format that references XML content by ID using `"xrjson('id')"` to avoid escaping issues and parsing problems. 
 
 ## Problem Statement
 
@@ -42,9 +46,33 @@ def calculate(a, b):
 npm install xrjson
 ```
 
+## XRJSON Format Rules and Guidelines
+
+### Rules
+
+* Use `xrjson code blocks` for external references
+* Long or multiline content (>50 chars) → use external literals
+* No JavaScript in JSON (e.g., no `+`, functions)
+* Don't concatenate strings inside JSON
+* Place all text (even intro) inside a literal
+
+### Reference Styles
+
+* **Recommended:** `"xrjson('id')"` 
+* **Also allowed:** `"xrjson(\"id\")"` or `{ "xrjson": "id" }`
+
+### Benefits
+
+* Cleaner JSON and XML
+* Prevents escaping errors
+* Easier to manage long content
+* AI-friendly structure
+
 ## Usage
 
-### Unified Format (Recommended)
+The library supports three parsing modes:
+
+### 1. Unified Format (Recommended)
 
 ```typescript
 import { parseXrjson } from 'xrjson';
@@ -67,7 +95,7 @@ console.log(result);
 // Output: { language: "python", code: "def hello_world():\n    print(\"Hello, World!\")\n    return \"success\"" }
 ```
 
-### Separate Format
+### 2. Separate Format
 
 ```typescript
 const jsonText = `{"code": "xrjson('func')"}`;
@@ -76,13 +104,39 @@ const xmlText = `<literals><literal id="func">console.log('Hello');</literal></l
 const result = parseXrjson(jsonText, xmlText);
 ```
 
-## Reference Formats
+### 3. Raw JSON
 
-The library supports three ways to reference external literals:
+```typescript
+import { parseXrjson } from 'xrjson';
 
-1. Single quotes: `"xrjson('literal-id')"` 
-2. Double quotes: `"xrjson(\"literal-id\")"`
-3. Object style: `{ "xrjson": "literal-id" }`
+// Works as drop-in replacement for JSON.parse()
+const result = parseXrjson('{"name": "John", "age": 30}');
+console.log(result); // { name: "John", age: 30 }
+```
+
+## Complete Example
+
+```xrjson
+{
+  "tools": [
+    {
+      "toolName": "new_file",
+      "path": "/long_code.js", 
+      "content": "xrjson('long_function')"
+    }
+  ]
+}
+
+<literals>
+<literal id="long_function">
+// Escaping is not needed. Automatically handled
+const longFunction = () => {
+    // Very long function
+    console.log("No escaping required for quotes or special chars!");
+}
+</literal>
+</literals>
+```
 
 ## Benefits for LLMs
 
@@ -98,23 +152,32 @@ See `example.xrjson` for a complete demonstration.
 ## API Reference
 
 ### `parseXrjson(content: string): any`
-Parses unified xrjson format (recommended).
+
+**Three parsing modes automatically detected:**
+
+1. **Unified xrjson format:**
+   ```typescript
+   parseXrjson(`{"code": "xrjson('func')"}\n<literals>...</literals>`)
+   ```
+
+2. **Separate format:**
+   ```typescript
+   parseXrjson('{"code": "xrjson(\'func\')"}', '<literals>...</literals>')
+   ```
+
+3. **Raw JSON parsing:**
+   ```typescript
+   parseXrjson('{"name": "John"}') // Standard JSON
+   ```
+
 
 **Parameters:**
-- `content`: String containing JSON structure followed by `<literals>` block
+- `content`: JSON string (raw) or xrjson content with `<literals>` block
+- `literalsXml` (optional): XML string for separate format
 
 **Returns:** JavaScript object with all references resolved
 
-### `parseXrjson(jsonText: string, literalsXml: string): any`  
-Parses separate format.
-
-**Parameters:**
-- `jsonText`: JSON string containing xrjson references
-- `literalsXml`: XML string containing literal definitions
-
-**Returns:** JavaScript object with all references resolved
-
-Both methods throw `XrjsonError` for parsing errors or missing references.
+**Throws:** `XrjsonError` for parsing errors or missing references
 
 ## License
 

@@ -164,4 +164,37 @@ describe('xrjson raw JSON parsing', () => {
     expect(result.scientific).toBe(0.000123);
     expect(result.negative).toBe(-42.5);
   });
+
+  test('cleans markdown code blocks before parsing', () => {
+    // Test xrjson code block
+    const xrjsonCodeBlock = `\`\`\`xrjson
+{
+  "message": "xrjson('greeting')"
+}
+
+<literals>
+<literal id="greeting">Hello from code block</literal>
+</literals>
+\`\`\``;
+    
+    const result1 = parseXrjson(xrjsonCodeBlock);
+    expect(result1.message).toBe('Hello from code block');
+    
+    // Test json code block
+    const jsonCodeBlock = `\`\`\`json
+{"name": "John", "cleaned": true}
+\`\`\``;
+    
+    const result2 = parseXrjson(jsonCodeBlock);
+    expect(result2.name).toBe('John');
+    expect(result2.cleaned).toBe(true);
+    
+    // Test generic code block
+    const genericCodeBlock = `\`\`\`
+{"type": "generic"}
+\`\`\``;
+    
+    const result3 = parseXrjson(genericCodeBlock);
+    expect(result3.type).toBe('generic');
+  });
 });

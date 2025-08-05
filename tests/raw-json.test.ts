@@ -197,4 +197,30 @@ describe('xrjson raw JSON parsing', () => {
     const result3 = parseXrjson(genericCodeBlock);
     expect(result3.type).toBe('generic');
   });
+
+  test('handles inline references within code blocks', () => {
+    // Test inline references with code block wrapper
+    const codeBlockWithInline = `\`\`\`xrjson
+{
+  "instructions": "Here is the content xrjson('python_code')",
+  "tutorial": "First run xrjson('setup_cmd'), then execute xrjson('main_script')",
+  "explanation": "The function xrjson('example_func') demonstrates basic syntax."
+}
+
+<literals>
+<literal id="python_code">def hello():
+    print("Hello World!")</literal>
+<literal id="setup_cmd">npm install</literal>
+<literal id="main_script">node app.js</literal>
+<literal id="example_func">def greet(name):
+    return f"Hello, {name}!"</literal>
+</literals>
+\`\`\``;
+    
+    const result = parseXrjson(codeBlockWithInline);
+    
+    expect(result.instructions).toBe('Here is the content def hello():\n    print("Hello World!")');
+    expect(result.tutorial).toBe('First run npm install, then execute node app.js');
+    expect(result.explanation).toBe('The function def greet(name):\n    return f"Hello, {name}!" demonstrates basic syntax.');
+  });
 });

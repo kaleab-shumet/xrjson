@@ -48,14 +48,6 @@ npm install xrjson
 
 ## XRJSON Format Rules and Guidelines
 
-### Rules
-
-* Use `xrjson code blocks` for external references
-* Long or multiline content (>50 chars) → use external literals
-* No JavaScript in JSON (e.g., no `+`, functions)
-* Don't concatenate strings inside JSON
-* Place all text (even intro) inside a literal
-
 ### Reference Styles
 
 * **Recommended:** `"xrjson('id')"` 
@@ -64,7 +56,7 @@ npm install xrjson
 ### Benefits
 
 * Cleaner JSON and XML
-* Prevents escaping errors
+* Prevents escaping errors for llms
 * Easier to manage long content
 * AI-friendly structure
 
@@ -77,22 +69,32 @@ The library supports three parsing modes:
 ```typescript
 import { parseXrjson } from 'xrjson';
 
-const content = `{
-  "language": "python", 
-  "code": "xrjson('my_function')"
+// Parse content with markdown code block wrapper and inline references
+const codeBlockContent = `\`\`\`xrjson
+{
+  "tutorial": "Here's how to create a Python function: xrjson('python_example')",
+  "instructions": "First run xrjson('setup_cmd'), then execute xrjson('main_script')",
+  "code": "xrjson('python_example')"
 }
 
 <literals>
-  <literal id="my_function">
-def hello_world():
-    print("Hello, World!")
-    return "success"
-  </literal>
-</literals>`;
+<literal id="python_example">def greet(name):
+    return f"Hello, {name}!"</literal>
+<literal id="setup_cmd">pip install requirements</literal>
+<literal id="main_script">python app.py</literal>
+</literals>
+\`\`\``;
 
-const result = parseXrjson(content);
+const result = parseXrjson(codeBlockContent);
 console.log(result);
-// Output: { language: "python", code: "def hello_world():\n    print(\"Hello, World!\")\n    return \"success\"" }
+
+/* Output:
+{
+  tutorial: "Here's how to create a Python function: def greet(name):\n    return f\"Hello, {name}!\"",
+  instructions: "First run pip install requirements, then execute python app.py",
+  code: "def greet(name):\n    return f\"Hello, {name}!\""
+}
+*/
 ```
 
 ### 2. Separate Format
@@ -114,36 +116,51 @@ const result = parseXrjson('{"name": "John", "age": 30}');
 console.log(result); // { name: "John", age: 30 }
 ```
 
-## Complete Example
+### Rules for LLM Text Generation
 
+* Use `xrjson code blocks` for XML references
+* Long or multiline content (>50 chars) → use external literals
+* No JavaScript in JSON (e.g., no `+`, functions, concatenation)
+* Don't concatenate strings inside JSON
+* Place all long text inside a literal
+* Use inline references: `"Here is code: xrjson('code-id')"`
+
+### Example Prompt Template
+
+```
+Generate xrjson format with the following guidelines:
+- Wrap output in ```xrjson code blocks
+- Use "xrjson('id')" for any content longer than 50 characters
+- Put code, documentation, and long text in <literal> elements
+- Keep JSON structure simple - no string concatenation
+- Reference literals using xrjson('literal-id') with unique id
+- Use inline references within strings for mixed content
+
+Output format:
 ```xrjson
 {
-  "tools": [
-    {
-      "toolName": "new_file",
-      "path": "/long_code.js", 
-      "content": "xrjson('long_function')"
-    }
-  ]
+  "instructions": "First step: xrjson('setup') then xrjson('run')",
+  "code": "xrjson('main-code')"
 }
 
 <literals>
-<literal id="long_function">
-// Escaping is not needed. Automatically handled
-const longFunction = () => {
-    // Very long function
-    console.log("No escaping required for quotes or special chars!");
-}
-</literal>
+<literal id="setup">pip install requirements</literal>
+<literal id="run">python app.py</literal>
+<literal id="main-code">def hello():
+    print("Hello World!")</literal>
 </literals>
 ```
 
+This ensures clean generation and reduces JSON escaping errors.
+
 ## Benefits for LLMs
 
-- Reduced errors through elimination of JSON escaping mistakes
-- Faster generation with simpler structure requirements
-- Lower token costs via cleaner, more efficient context
-- Better focus by separating structure from content concerns
+- **Reduced errors** - Eliminates JSON escaping mistakes
+- **Faster generation** - Simpler structure requirements
+- **Lower token costs** - Cleaner, more efficient context
+- **Better focus** - Separates structure from content concerns
+- **Reliable output** - Reduces truncation and malformed JSON
+- **Copy-paste ready** - Generated code blocks work directly
 
 ## Example
 

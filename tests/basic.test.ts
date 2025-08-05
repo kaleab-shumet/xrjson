@@ -17,7 +17,7 @@ def test():
     const result = parseXrjson(content);
     
     expect(result.language).toBe('python');
-    expect(result.code).toBe('def test():\n    return "Hello World"');
+    expect(result.code.trim()).toBe('def test():\n    return "Hello World"');
   });
 
   test('parses separate format correctly', () => {

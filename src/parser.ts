@@ -21,13 +21,21 @@ export function parseXrjsonContent(content: string): XrjsonParseResult {
   };
 }
 
+function extractLiteralContent(literalsXml: string, id: string): string {
+  // Use regex to extract the raw content between literal tags
+  const literalRegex = new RegExp(`<literal\\s+id=["']${id}["'][^>]*>([\\s\\S]*?)<\\/literal>`, 'i');
+  const match = literalsXml.match(literalRegex);
+  return match ? match[1] : '';
+}
+
 export function parseLiteralsXml(literalsXml: string): LiteralsMap {
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
     textNodeName: '#text',
     parseAttributeValue: true,
-    trimValues: true
+    trimValues: false,
+    preserveOrder: false
   });
 
   try {
@@ -52,7 +60,26 @@ export function parseLiteralsXml(literalsXml: string): LiteralsMap {
         throw new XrjsonError('Literal element missing required "id" attribute');
       }
 
-      const content = literal['#text'] || '';
+      // For complex content (when XML parser creates nested objects), 
+      // extract raw content from original XML
+      let content = '';
+      const keys = Object.keys(literal);
+      const hasOnlyTextAndId = keys.length === 2 && keys.includes('#text') && keys.includes('@_id');
+      const hasOnlyId = keys.length === 1 && keys.includes('@_id');
+      
+      if (hasOnlyTextAndId && typeof literal['#text'] === 'string') {
+        // Simple text content only
+        content = literal['#text'];
+      } else if (typeof literal === 'string') {
+        content = literal;
+      } else if (hasOnlyId) {
+        // Empty literal element
+        content = '';
+      } else {
+        // Complex content (has nested XML elements) - extract from original XML
+        content = extractLiteralContent(literalsXml, id);
+      }
+      
       literalsMap[id] = content;
     }
 

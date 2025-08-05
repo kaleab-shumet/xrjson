@@ -21,14 +21,34 @@ export function parseXrjsonContent(content: string): XrjsonParseResult {
   };
 }
 
-function extractLiteralContent(literalsXml: string, id: string): string {
-  // Use regex to extract the raw content between literal tags
-  const literalRegex = new RegExp(`<literal\\s+id=["']${id}["'][^>]*>([\\s\\S]*?)<\\/literal>`, 'i');
-  const match = literalsXml.match(literalRegex);
-  return match ? match[1] : '';
-}
-
 export function parseLiteralsXml(literalsXml: string): LiteralsMap {
+  const literalsMap: LiteralsMap = {};
+  
+  // First try regex-based approach to extract all literal elements
+  const literalRegex = /<literal\s+id=["']([^"']+)["'][^>]*>([\s\S]*?)<\/literal>/gi;
+  let match;
+  
+  while ((match = literalRegex.exec(literalsXml)) !== null) {
+    const id = match[1];
+    let content = match[2];
+    
+    // Decode basic HTML entities
+    content = content
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    
+    literalsMap[id] = content;
+  }
+  
+  // If we found literals with regex, return them
+  if (Object.keys(literalsMap).length > 0) {
+    return literalsMap;
+  }
+  
+  // Fallback to XML parser for simple cases
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
@@ -46,7 +66,6 @@ export function parseLiteralsXml(literalsXml: string): LiteralsMap {
     }
 
     const literals = parsed.literals.literal;
-    const literalsMap: LiteralsMap = {};
 
     if (!literals) {
       return literalsMap;
@@ -60,24 +79,13 @@ export function parseLiteralsXml(literalsXml: string): LiteralsMap {
         throw new XrjsonError('Literal element missing required "id" attribute');
       }
 
-      // For complex content (when XML parser creates nested objects), 
-      // extract raw content from original XML
       let content = '';
-      const keys = Object.keys(literal);
-      const hasOnlyTextAndId = keys.length === 2 && keys.includes('#text') && keys.includes('@_id');
-      const hasOnlyId = keys.length === 1 && keys.includes('@_id');
-      
-      if (hasOnlyTextAndId && typeof literal['#text'] === 'string') {
-        // Simple text content only
+      if (literal['#text'] !== undefined && typeof literal['#text'] === 'string') {
         content = literal['#text'];
       } else if (typeof literal === 'string') {
         content = literal;
-      } else if (hasOnlyId) {
-        // Empty literal element
-        content = '';
       } else {
-        // Complex content (has nested XML elements) - extract from original XML
-        content = extractLiteralContent(literalsXml, id);
+        content = '';
       }
       
       literalsMap[id] = content;

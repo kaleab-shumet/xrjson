@@ -80,8 +80,8 @@ const result = parseXrjson(jsonText, xmlText);
 
 The library supports three ways to reference external literals:
 
-1. Double quotes: `"xrjson(\"literal-id\")"`
-2. Single quotes: `"xrjson('literal-id')"` 
+1. Single quotes: `"xrjson('literal-id')"` 
+2. Double quotes: `"xrjson(\"literal-id\")"`
 3. Object style: `{ "xrjson": "literal-id" }`
 
 ## Benefits for LLMs

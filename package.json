@@ -3,10 +3,19 @@
   "version": "1.0.0",
   "description": "Unified External Reference JSON Parser - Solve LLM JSON generation errors by separating complex content from JSON structure",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "tests",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "prepare": "npm run build",    
     "test": "jest",
     "test:watch": "jest --watch"
   },

@@ -1,6 +1,6 @@
 {
   "name": "xrjson",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Unified External Reference JSON Parser - Solve LLM JSON generation errors by separating complex content from JSON structure",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,7 +15,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "prepare": "npm run build",    
+    "prepare": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch"
   },
@@ -33,6 +33,14 @@
   ],
   "author": "xrjson contributors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kaleab-shumet/xrjson.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kaleab-shumet/xrjson/issues"
+  },
+  "homepage": "https://github.com/kaleab-shumet/xrjson#readme",
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",

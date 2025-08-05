@@ -1,4 +1,4 @@
-# xrjson
+# xrjson(Xml Referring JSON)
 
 A TypeScript library for parsing JSON with external XML literal references, designed to solve JSON generation errors in Large Language Models by separating complex content from JSON structure.
 

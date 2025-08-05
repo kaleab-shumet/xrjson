@@ -1,0 +1,33 @@
+{
+  "language": "python",
+  "functions": [
+    "xrjson('hello_function')",
+    "xrjson('math_function')"
+  ],
+  "config": { "xrjson": "app_config" }
+}
+
+<literals>
+  <literal id="hello_function">
+def hello(name):
+    """Greet someone by name."""
+    return f"Hello, {name}!"
+  </literal>
+  <literal id="math_function">
+def calculate(a, b, operation="add"):
+    """Perform basic math operations."""
+    if operation == "add":
+        return a + b
+    elif operation == "multiply":
+        return a * b
+    else:
+        raise ValueError("Unsupported operation")
+  </literal>
+  <literal id="app_config">
+{
+  "debug": true,
+  "max_connections": 100,
+  "timeout": 30
+}
+  </literal>
+</literals>

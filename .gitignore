@@ -91,3 +91,5 @@ temp/
 # Test artifacts
 test-results/
 coverage/
+*.lcov
+junit.xml

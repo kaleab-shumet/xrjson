@@ -7,12 +7,21 @@ export function parseXrjson(contentOrJson: string, literalsXml?: string): any {
     let xmlText: string;
     
     if (literalsXml !== undefined) {
+      // Separate format: parseXrjson(jsonText, xmlText)
       jsonText = contentOrJson;
       xmlText = literalsXml;
     } else {
-      const parsed = parseXrjsonContent(contentOrJson);
-      jsonText = parsed.jsonContent;
-      xmlText = parsed.xmlContent;
+      // Unified format or pure JSON
+      if (contentOrJson.includes('<literals>')) {
+        // Unified format with literals block
+        const parsed = parseXrjsonContent(contentOrJson);
+        jsonText = parsed.jsonContent;
+        xmlText = parsed.xmlContent;
+      } else {
+        // Pure JSON without literals
+        jsonText = contentOrJson;
+        xmlText = '<literals></literals>'; // Empty literals block
+      }
     }
     
     const jsonObj = JSON.parse(jsonText);

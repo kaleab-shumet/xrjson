@@ -20,6 +20,7 @@ export function parseXrjsonContent(content: string): XrjsonParseResult {
   };
 }
 
+
 function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&lt;/g, '<')
@@ -54,12 +55,15 @@ export function parseLiteralsXml(literalsXml: string): LiteralsMap {
     
     const id = idMatch[1];
     
-    // Handle CDATA sections
+    // Handle CDATA sections - extract raw content without entity decoding
     const cdataRegex = /<!\[CDATA\[([\s\S]*?)\]\]>/g;
+    const hasCdata = cdataRegex.test(content);
     content = content.replace(cdataRegex, (_, cdataContent) => cdataContent);
     
-    // Decode HTML entities (but not inside CDATA sections)
-    content = decodeHtmlEntities(content);
+    // Only decode HTML entities if not inside CDATA (where content should be raw)
+    if (!hasCdata) {
+      content = decodeHtmlEntities(content);
+    }
     
     literalsMap[id] = content;
   }

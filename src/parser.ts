@@ -1,4 +1,3 @@
-import { XMLParser } from 'fast-xml-parser';
 import { LiteralsMap, XrjsonError, XrjsonParseResult } from './types';
 
 export function parseXrjsonContent(content: string): XrjsonParseResult {
@@ -21,83 +20,60 @@ export function parseXrjsonContent(content: string): XrjsonParseResult {
   };
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
+}
+
 export function parseLiteralsXml(literalsXml: string): LiteralsMap {
   const literalsMap: LiteralsMap = {};
   
-  // First try regex-based approach to extract all literal elements
-  const literalRegex = /<literal\s+id=["']([^"']+)["'][^>]*>([\s\S]*?)<\/literal>/gi;
+  // Validate that we have a proper <literals> wrapper
+  if (!/<literals[\s>]/.test(literalsXml) || !/<\/literals>/.test(literalsXml)) {
+    throw new XrjsonError('Invalid XML: missing <literals> root element');
+  }
+  
+  // Extract all literal elements using regex
+  const literalRegex = /<literal\s+([^>]*?)>([\s\S]*?)<\/literal>/gi;
   let match;
   
   while ((match = literalRegex.exec(literalsXml)) !== null) {
-    const id = match[1];
+    const attributes = match[1];
     let content = match[2];
     
-    // Decode basic HTML entities
-    content = content
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'");
+    // Extract id attribute from the attributes string
+    const idMatch = attributes.match(/id\s*=\s*["']([^"']+)["']/i);
+    if (!idMatch) {
+      throw new XrjsonError('Literal element missing required "id" attribute');
+    }
+    
+    const id = idMatch[1];
+    
+    // Handle CDATA sections
+    const cdataRegex = /<!\[CDATA\[([\s\S]*?)\]\]>/g;
+    content = content.replace(cdataRegex, (_, cdataContent) => cdataContent);
+    
+    // Decode HTML entities (but not inside CDATA sections)
+    content = decodeHtmlEntities(content);
     
     literalsMap[id] = content;
   }
   
-  // If we found literals with regex, return them
-  if (Object.keys(literalsMap).length > 0) {
-    return literalsMap;
+  // Check if we found any literals
+  if (Object.keys(literalsMap).length === 0) {
+    // Check if there are any literal tags at all to provide better error messages
+    if (/<literal\s/.test(literalsXml)) {
+      throw new XrjsonError('Found <literal> elements but could not parse them properly');
+    }
+    // Return empty map for valid but empty literals block
   }
   
-  // Fallback to XML parser for simple cases
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    textNodeName: '#text',
-    parseAttributeValue: true,
-    trimValues: false,
-    preserveOrder: false
-  });
-
-  try {
-    const parsed = parser.parse(literalsXml);
-    
-    if (!parsed.literals) {
-      throw new XrjsonError('Invalid XML: missing <literals> root element');
-    }
-
-    const literals = parsed.literals.literal;
-
-    if (!literals) {
-      return literalsMap;
-    }
-
-    const literalArray = Array.isArray(literals) ? literals : [literals];
-
-    for (const literal of literalArray) {
-      const id = literal['@_id'];
-      if (!id) {
-        throw new XrjsonError('Literal element missing required "id" attribute');
-      }
-
-      let content = '';
-      if (literal['#text'] !== undefined && typeof literal['#text'] === 'string') {
-        content = literal['#text'];
-      } else if (typeof literal === 'string') {
-        content = literal;
-      } else {
-        content = '';
-      }
-      
-      literalsMap[id] = content;
-    }
-
-    return literalsMap;
-  } catch (error) {
-    if (error instanceof XrjsonError) {
-      throw error;
-    }
-    throw new XrjsonError(`Failed to parse literals XML: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  return literalsMap;
 }
 
 const XRJSON_DOUBLE_QUOTE_PATTERN = /^xrjson\("([^"]+)"\)$/;

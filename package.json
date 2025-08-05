@@ -10,12 +10,20 @@
     "test": "jest",
     "test:watch": "jest --watch"
   },
-  "keywords": ["json", "llm", "parser", "xml", "ai", "code-generation", "typescript", "xrjson", "prompt", "prompt-engineering"],
+  "keywords": [
+    "json",
+    "llm",
+    "parser",
+    "xml",
+    "ai",
+    "code-generation",
+    "typescript",
+    "xrjson",
+    "prompt",
+    "prompt-engineering"
+  ],
   "author": "xrjson contributors",
   "license": "MIT",
-  "dependencies": {
-    "fast-xml-parser": "^4.3.0"
-  },
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",

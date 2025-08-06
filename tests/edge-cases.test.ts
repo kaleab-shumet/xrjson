@@ -68,18 +68,18 @@ describe('xrjson edge cases', () => {
     expect(result.mixed).toBe('Single quote ref and Double quote ref');
   });
 
-  test('handles XML with CDATA sections', () => {
+  test('handles code with special characters (raw content)', () => {
     const content = `{
       "script": "xrjson('js-code')"
     }
     
     <literals>
-      <literal id="js-code"><![CDATA[
+      <literal id="js-code">
 function test() {
   console.log("Hello <world>");
   return x < 5 && y > 10;
 }
-      ]]></literal>
+      </literal>
     </literals>`;
 
     const result = parseXrjson(content);
@@ -127,7 +127,7 @@ function test() {
     }
     
     <literals>
-      <literal id="special-chars">Special: &lt;&gt;&amp;"'@#$%^&*()</literal>
+      <literal id="special-chars">Special: <>&"'@#$%^&*()</literal>
       <literal id="unicode-text">Unicode: 🚀 ñáéíóú 中文 العربية</literal>
     </literals>`;
 
@@ -138,5 +138,155 @@ function test() {
     expect(result.unicode).toContain('ñáéíóú');
     expect(result.unicode).toContain('中文');
     expect(result.unicode).toContain('العربية');
+  });
+
+  test('handles problematic strings that could break parsing', () => {
+    const content = `{
+      "sql_injection": "xrjson('sql-attack')",
+      "path_traversal": "xrjson('path-attack')",
+      "nested_quotes": "xrjson('quote-hell')",
+      "control_chars": "xrjson('control-sequence')",
+      "regex_bomb": "xrjson('regex-attack')",
+      "unicode_exploit": "xrjson('unicode-attack')",
+      "backslashes": "xrjson('backslash-test')",
+      "json_structure": "xrjson('json-like')"
+    }
+    
+    <literals>
+      <literal id="sql-attack">'; DROP TABLE users; --</literal>
+      <literal id="path-attack">../../../etc/passwd</literal>
+      <literal id="quote-hell">"He said "She said 'It's "complicated"'"</literal>
+      <literal id="control-sequence">Line1
+Line2	Tabbed</literal>
+      <literal id="regex-attack">^(a+)+$</literal>
+      <literal id="unicode-attack">𝕏𝓇𝒿𝓈𝑜𝓃 ＜script＞alert()＜/script＞</literal>
+      <literal id="backslash-test">C:\\Users\\John\\Documents\\file.txt</literal>
+      <literal id="json-like">{"key": "value", "number": 123, "nested": {"inner": "data"}}</literal>
+    </literals>`;
+
+    const result = parseXrjson(content);
+    
+    // Verify problematic content is preserved as plain text
+    expect(result.sql_injection).toBe("'; DROP TABLE users; --");
+    expect(result.path_traversal).toBe("../../../etc/passwd");
+    expect(result.nested_quotes).toBe('"He said "She said \'It\'s "complicated"\'"');
+    expect(result.control_chars).toContain("Line1\nLine2\tTabbed");
+    expect(result.regex_bomb).toBe("^(a+)+$");
+    expect(result.unicode_exploit).toBe("𝕏𝓇𝒿𝓈𝑜𝓃 ＜script＞alert()＜/script＞");
+    expect(result.backslashes).toBe("C:\\Users\\John\\Documents\\file.txt");
+    expect(result.json_structure).toBe('{"key": "value", "number": 123, "nested": {"inner": "data"}}');
+    
+    // Verify the main JSON structure wasn't broken
+    expect(typeof result).toBe('object');
+    expect(Object.keys(result)).toHaveLength(8);
+  });
+
+  test('handles special characters as raw text (no HTML entities)', () => {
+    const content = `{
+      "raw_content": "xrjson('raw-test')",
+      "special_chars": "xrjson('special-test')"
+    }
+    
+    <literals>
+      <literal id="raw-test">Alert: <script>alert("test")</script></literal>
+      <literal id="special-test">Text with & symbols < and > brackets</literal>
+    </literals>`;
+
+    const result = parseXrjson(content);
+    
+    // All content is treated as raw - no entity processing
+    expect(result.raw_content).toBe('Alert: <script>alert("test")</script>');
+    expect(result.special_chars).toBe('Text with & symbols < and > brackets');
+  });
+
+  test('handles complex JSON with nested quotes and JavaScript with backticks', () => {
+    const content = `{
+      "simple_json": "xrjson('simple-json')",
+      "js_with_backticks": "xrjson('js-template')",
+      "mixed_quotes": "xrjson('quote-mix')",
+      "backslash_heavy": "xrjson('backslash-code')"
+    }
+    
+    <literals>
+      <literal id="simple-json">{"name": "John", "role": "developer"}</literal>
+      <literal id="js-template">const msg = \`Hello \${name}! Your score: \${score}\`;
+console.log(\`Template with backticks\`);</literal>
+      <literal id="quote-mix">"He said 'I love mixing quotes'"</literal>
+      <literal id="backslash-code">const path = "C:\\Users\\John\\file.txt";
+const regex = "\\w+\\d+";</literal>
+    </literals>`;
+
+    const result = parseXrjson(content);
+    
+    // Verify simple JSON is preserved
+    expect(result.simple_json).toBe('{"name": "John", "role": "developer"}');
+    
+    // Verify JavaScript with template literals
+    expect(result.js_with_backticks).toContain('const msg = `Hello ${name}! Your score: ${score}`;');
+    expect(result.js_with_backticks).toContain('console.log(`Template with backticks`);');
+    
+    // Verify mixed quotes work
+    expect(result.mixed_quotes).toBe('"He said \'I love mixing quotes\'"');
+    
+    // Verify backslash handling
+    expect(result.backslash_heavy).toContain('const path = "C:\\Users\\John\\file.txt";');
+    expect(result.backslash_heavy).toContain('const regex = "\\w+\\d+";');
+  });
+
+  test('handles extremely complex quote and backtick combinations', () => {
+    const content = `{
+      "nested_json_hell": "xrjson('json-nightmare')",
+      "js_template_chaos": "xrjson('template-chaos')",
+      "quote_inception": "xrjson('quote-madness')",
+      "mixed_syntax_bomb": "xrjson('syntax-bomb')"
+    }
+    
+    <literals>
+      <literal id="json-nightmare">{
+  "user": {
+    "name": "John \\"The Coder\\" O'Reilly",
+    "bio": "He said: \\"I love 'complex' JSON with nested quotes!\\"",
+    "config": {
+      "quotes": "\\"single\\" and 'double' and backtick mixed",
+      "template": "Template inside JSON with variables"
+    }
+  }
+}</literal>
+      <literal id="template-chaos">const template = \`Hello \${name}! Your message: "\${message}"\`;
+const nested = \`Item: \${item.name} (\${item.value})\`;
+const query = \`SELECT * FROM users WHERE name = '\${username}'\`;</literal>
+      <literal id="quote-madness">"He said: \\"She replied: 'I told him: it\\'s complicated but he said trust me.'\\"</literal>
+      <literal id="syntax-bomb">const mixed = {
+  "json": '{"key": "value with quotes and backticks"}',
+  'single': \`Template with "double" and 'single' quotes\`,
+  regex: /(['"])(.*?)\\1/g
+};</literal>
+    </literals>`;
+
+    const result = parseXrjson(content);
+    
+    // Verify complex JSON with multiple quote types
+    const jsonData = JSON.parse(result.nested_json_hell);
+    expect(jsonData.user.name).toBe('John "The Coder" O\'Reilly');
+    expect(jsonData.user.bio).toContain('I love \'complex\' JSON');
+    expect(jsonData.user.config.quotes).toContain('"single" and \'double\'');
+    
+    // Verify complex JavaScript template literals
+    expect(result.js_template_chaos).toContain('Hello ${name}!');
+    expect(result.js_template_chaos).toContain('Your message: "${message}"');
+    expect(result.js_template_chaos).toContain('Item: ${item.name} (${item.value})');
+    expect(result.js_template_chaos).toContain('WHERE name = \'${username}\'');
+    
+    // Verify nested quote madness
+    expect(result.quote_inception).toBe('"He said: \\"She replied: \'I told him: it\\\'s complicated but he said trust me.\'\\"');
+    
+    // Verify mixed syntax combinations
+    expect(result.mixed_syntax_bomb).toContain('"json": \'{"key": "value with quotes and backticks"}\'');
+    expect(result.mixed_syntax_bomb).toContain('\'single\': `Template with "double" and \'single\' quotes`');
+    expect(result.mixed_syntax_bomb).toContain('regex: /([\'"])(.*?)\\1/g');
+    
+    // Verify the main JSON structure wasn't broken by all this complexity
+    expect(typeof result).toBe('object');
+    expect(Object.keys(result)).toHaveLength(4);
   });
 });

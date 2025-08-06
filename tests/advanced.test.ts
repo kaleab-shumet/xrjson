@@ -174,7 +174,7 @@ function example() {
     }
     
     <literals>
-      <literal id="html-content">&lt;div&gt;Content &amp; more&lt;/div&gt;</literal>
+      <literal id="html-content"><div>Content & more</div></literal>
     </literals>`;
 
     const result = parseXrjson(content);

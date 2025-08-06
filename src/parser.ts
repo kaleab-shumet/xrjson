@@ -1,17 +1,26 @@
 import { LiteralsMap, XrjsonError, XrjsonParseResult } from './types';
 
 export function parseXrjsonContent(content: string): XrjsonParseResult {
-  const literalsMatch = content.match(/<literals>([\s\S]*?)<\/literals>/);
+  // Use regex to find the literals block, but be more careful about boundaries
+  const literalsMatch = content.match(/^([\s\S]*?)\s*(<literals>[\s\S]*<\/literals>)\s*$/);
   
   if (!literalsMatch) {
     throw new XrjsonError('No <literals> block found in xrjson content');
   }
   
-  const xmlContent = `<literals>${literalsMatch[1]}</literals>`;
-  const jsonContent = content.replace(/<literals>[\s\S]*?<\/literals>/, '').trim();
+  const jsonContent = literalsMatch[1].trim();
+  const xmlContent = literalsMatch[2];
   
   if (!jsonContent) {
     throw new XrjsonError('No JSON content found in xrjson file');
+  }
+  
+  // Validate that we have exactly one literals block
+  const literalsCount = (xmlContent.match(/<literals>/g) || []).length;
+  const literalsEndCount = (xmlContent.match(/<\/literals>/g) || []).length;
+  
+  if (literalsCount !== 1 || literalsEndCount !== 1) {
+    throw new XrjsonError('Invalid literals block structure - content may contain conflicting XML patterns, or multiple <literals> tags');
   }
   
   return {
@@ -47,9 +56,8 @@ export function parseLiteralsXml(literalsXml: string): LiteralsMap {
     
     const id = idMatch[1];
     
-    // Treat all content as raw (like CDATA) - no entity decoding or backslash escaping
-    // This preserves special characters, code snippets, and problematic strings exactly as written
-    
+
+    // Store content as-is (raw content)
     literalsMap[id] = content;
   }
   

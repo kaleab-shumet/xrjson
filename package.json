@@ -1,6 +1,6 @@
 {
   "name": "xrjson",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Unified XML Referring JSON Parser - Solve LLM JSON generation errors by separating complex content from JSON structure",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

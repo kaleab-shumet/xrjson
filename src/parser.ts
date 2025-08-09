@@ -1,18 +1,98 @@
 import { LiteralsMap, XrjsonError, XrjsonParseResult } from './types';
 
 export function parseXrjsonContent(content: string): XrjsonParseResult {
-  // Use regex to find the literals block, but be more careful about boundaries
-  const literalsMatch = content.match(/^([\s\S]*?)\s*(<literals>[\s\S]*<\/literals>)\s*$/);
+  // First, find the literals block anywhere in the content
+  const literalsBlockMatch = content.match(/<literals>[\s\S]*?<\/literals>/);
   
-  if (!literalsMatch) {
+  if (!literalsBlockMatch) {
     throw new XrjsonError('No <literals> block found in xrjson content');
   }
   
-  const jsonContent = literalsMatch[1].trim();
-  const xmlContent = literalsMatch[2];
+  const xmlContent = literalsBlockMatch[0];
+  const literalsStart = literalsBlockMatch.index!;
+  
+  // Extract everything before the literals block as potential JSON content
+  const beforeLiterals = content.substring(0, literalsStart).trim();
+  
+  // Find JSON content by looking for the last complete JSON object/array before the literals
+  let jsonContent = '';
+  let jsonStart = -1;
+  
+  // Try to find JSON starting from different positions, working backwards
+  for (let i = beforeLiterals.length - 1; i >= 0; i--) {
+    const char = beforeLiterals[i];
+    if (char === '}' || char === ']') {
+      // Found potential end of JSON, now find the matching start
+      let braceCount = 0;
+      let bracketCount = 0;
+      let inString = false;
+      let escape = false;
+      
+      for (let j = i; j >= 0; j--) {
+        const currentChar = beforeLiterals[j];
+        
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        
+        if (currentChar === '\\') {
+          escape = true;
+          continue;
+        }
+        
+        if (currentChar === '"') {
+          inString = !inString;
+          continue;
+        }
+        
+        if (inString) continue;
+        
+        if (currentChar === '}') braceCount++;
+        if (currentChar === '{') braceCount--;
+        if (currentChar === ']') bracketCount++;
+        if (currentChar === '[') bracketCount--;
+        
+        if (braceCount === 0 && bracketCount === 0 && (currentChar === '{' || currentChar === '[')) {
+          jsonStart = j;
+          jsonContent = beforeLiterals.substring(j, i + 1).trim();
+          break;
+        }
+      }
+      
+      if (jsonStart !== -1) {
+        // Validate that this is actually valid JSON
+        try {
+          JSON.parse(jsonContent);
+          break; // Found valid JSON
+        } catch {
+          // Not valid JSON, continue searching
+          jsonContent = '';
+          jsonStart = -1;
+        }
+      }
+    }
+  }
+  
+  // If we didn't find JSON with the brace matching approach, try a simpler approach
+  if (!jsonContent) {
+    // Look for JSON-like patterns
+    const jsonPattern = /(\{[\s\S]*?\}|\[[\s\S]*?\])\s*$/;
+    const jsonMatch = beforeLiterals.match(jsonPattern);
+    
+    if (jsonMatch) {
+      const candidate = jsonMatch[1].trim();
+      try {
+        JSON.parse(candidate);
+        jsonContent = candidate;
+      } catch {
+        // Still not valid JSON
+      }
+    }
+  }
   
   if (!jsonContent) {
-    throw new XrjsonError('No JSON content found in xrjson file');
+    throw new XrjsonError('No valid JSON content found before the <literals> block');
   }
   
   // Validate that we have exactly one literals block
